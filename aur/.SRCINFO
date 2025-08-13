@@ -1,0 +1,10 @@
+pkgbase = midori-ai-hello
+pkgdesc = Vision TUI that trains YOLO models and manages KDE screen lock
+pkgver = 0.0.0
+pkgrel = 1
+url = https://github.com/midori-ai-oss/Midori-AI-Hello
+arch = any
+license = MIT
+depends = uv
+
+pkgname = midori-ai-hello

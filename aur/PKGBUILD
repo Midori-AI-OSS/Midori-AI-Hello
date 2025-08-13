@@ -1,0 +1,16 @@
+# Maintainer: TODO
+pkgname=midori-ai-hello
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Vision TUI that trains YOLO models and manages KDE screen lock"
+arch=('any')
+url="https://github.com/midori-ai-oss/Midori-AI-Hello"
+license=('MIT')
+depends=('uv')
+source=()
+sha256sums=()
+
+package() {
+  # TODO: install the application files
+  :
+}
