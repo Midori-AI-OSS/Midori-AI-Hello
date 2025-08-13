@@ -1,0 +1,21 @@
+[project]
+name = "midori-ai-hello"
+version = "0.1.0"
+authors = [
+    { name = "Codex", email = "codex@openai.com" },
+    { name = "Luna Midori", email = "midoriaidev@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=8.4.1",
+]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["midori_ai_hello"]
+
+[tool.setuptools.package-dir]
+midori_ai_hello = "midori-ai-hello"
