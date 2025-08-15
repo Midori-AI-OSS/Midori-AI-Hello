@@ -6,8 +6,8 @@ This module provides the :class:`WhitelistManager` class for managing a list
 of authorised user profiles. Profiles are stored in
 ``~/.midoriai/whitelist.json`` and encrypted using a key derived from
 ``sha512`` of the trained model weights combined with a machine-specific
-secret. The key derivation matches the requirements described in
-``.codex/tasks/31b76dd4-profile-encryption.md``.
+secret. The key derivation follows the approach documented in
+``.codex/implementation/profile-encryption.md``.
 
 The encryption scheme uses :class:`cryptography.fernet.Fernet`. A companion
 ``whitelist.hash`` file stores the model hash used for encryption so that the
@@ -44,7 +44,7 @@ class WhitelistManager:
 
     def _host_hash(self) -> str:
         if not self.uuid_file.exists():
-            self.uuid_file.write_text(f"{uuid.uuid4()}{uuid.uuid4()}")
+            self.uuid_file.write_text(f"{uuid.uuid4()}\n{uuid.uuid4()}\n")
         secret = self.uuid_file.read_text()
         return hashlib.sha512(secret.encode()).hexdigest()
 
