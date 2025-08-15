@@ -15,6 +15,10 @@ dependencies = [
     "ultralytics>=8.3.179",
 ]
 
+[project.scripts]
+"midori-ai-hello" = "midori_ai_hello.__main__:main"
+midori_ai_hello = "midori_ai_hello.__main__:main"
+
 [build-system]
 requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
