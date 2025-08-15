@@ -49,3 +49,15 @@ def test_hash_mismatch(tmp_path: Path):
 
     manager_new.reencrypt()
     assert manager_new.is_hash_mismatch() is False
+
+
+def test_data_encrypted(tmp_path: Path):
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"model-weights")
+    config_dir = tmp_path / "config"
+
+    manager = WhitelistManager(model_path=model, config_dir=config_dir)
+    manager.add_user("alice")
+
+    raw = (config_dir / "whitelist.json").read_text()
+    assert "alice" not in raw

@@ -1,10 +1,13 @@
+# Generated manually; this package uses uv exclusively, no system python.
 pkgbase = midori-ai-hello
 pkgdesc = Vision TUI that trains YOLO models and manages KDE screen lock
-pkgver = 0.0.0
+pkgver = 0.1.0
 pkgrel = 1
-url = https://github.com/midori-ai-oss/Midori-AI-Hello
+url = https://github.com/Midori-AI-OSS/Midori-AI-Hello
 arch = any
 license = MIT
 depends = uv
+source = midori-ai-hello-0.1.0.tar.gz::https://github.com/Midori-AI-OSS/Midori-AI-Hello/archive/38d3ee46cf79539e7d97f05aec9c1b2430b48ee9.tar.gz
+sha256sums = 017b3314baf65b19b104f518e6206f18494cf8b5dc36a4be6666a17c3b692a41
 
 pkgname = midori-ai-hello
