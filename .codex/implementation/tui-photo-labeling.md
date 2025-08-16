@@ -12,6 +12,8 @@ from multiple cameras and writing YOLO-format labels.
 - `CaptureScreen` binds `c` to capture a frame and `n` to cycle cameras.
   Capturing opens `cv2.selectROI` dialogs for face and body regions
   before prompting for the subject name.
+  When no cameras are detected, the screen remains idle without
+  attempting to open a device.
 
 See planning notes in `.codex/planning/plan.md` and
 `.codex/planning/textual_review.md` for the broader TUI design.

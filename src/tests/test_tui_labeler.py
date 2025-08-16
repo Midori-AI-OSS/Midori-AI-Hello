@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from midori_ai_hello.capture_screen import cv2, list_cameras, save_sample
+from midori_ai_hello.capture_screen import CaptureScreen, cv2, list_cameras, save_sample
 
 
 @pytest.mark.skipif(cv2 is None, reason="opencv not available")
@@ -38,3 +38,9 @@ def test_save_sample_writes_image_and_label(tmp_path: Path):
     lines = label_path.read_text().strip().splitlines()
     assert lines[0].startswith("0 ")
     assert lines[1].startswith("1 ")
+
+
+def test_capture_screen_handles_empty_camera_list(tmp_path: Path):
+    screen = CaptureScreen(tmp_path, cameras=[])
+    screen._open_camera()
+    assert screen._cap is None
