@@ -91,13 +91,15 @@ class CaptureScreen(Screen):
             self._open_camera()
 
     def _open_camera(self) -> None:
-        if cv2 is None:
+        if cv2 is None or not self.cameras:
             return
         if self._cap:
             self._cap.release()
         self._cap = cv2.VideoCapture(self.cameras[self._current])
 
     def action_next_camera(self) -> None:
+        if not self.cameras:
+            return
         self._current = (self._current + 1) % len(self.cameras)
         self._open_camera()
 
