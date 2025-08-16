@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from .yolo_train import YOLOTrainingScheduler
 
 def main(argv: list[str] | None = None) -> int:
     """Run the Midori-AI Hello Textual application."""
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(prog="midori-ai-hello")
     try:
         pkg_version = version("midori-ai-hello")

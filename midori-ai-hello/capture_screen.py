@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import Iterable, Tuple
@@ -16,6 +17,9 @@ from textual.screen import Screen
 from textual.widgets import Static
 
 
+log = logging.getLogger(__name__)
+
+
 BBox = Tuple[int, int, int, int]
 
 
@@ -23,12 +27,20 @@ def list_cameras(max_devices: int = 10) -> list[int]:
     """Return indices of available camera devices."""
     cameras: list[int] = []
     if cv2 is None:
+        log.warning("OpenCV not available; no cameras will be detected")
         return cameras
+    log.debug("Scanning for cameras up to index %d", max_devices)
     for index in range(max_devices):
+        log.debug("Checking camera index %d", index)
         cap = cv2.VideoCapture(index)
         if cap.isOpened():
+            log.info("Camera %d is available", index)
             cameras.append(index)
         cap.release()
+    if not cameras:
+        log.warning("No cameras detected")
+    else:
+        log.debug("Detected cameras: %s", cameras)
     return cameras
 
 
@@ -92,10 +104,18 @@ class CaptureScreen(Screen):
 
     def _open_camera(self) -> None:
         if cv2 is None or not self.cameras:
+            log.warning("No cameras configured or OpenCV missing")
             return
         if self._cap:
             self._cap.release()
-        self._cap = cv2.VideoCapture(self.cameras[self._current])
+        index = self.cameras[self._current]
+        log.info("Opening camera index %s", index)
+        cap = cv2.VideoCapture(index)
+        if not cap or not cap.isOpened():
+            log.warning("Failed to open camera index %s", index)
+            self._cap = None
+            return
+        self._cap = cap
 
     def action_next_camera(self) -> None:
         if not self.cameras:
