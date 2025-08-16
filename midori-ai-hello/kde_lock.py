@@ -39,6 +39,19 @@ class KDEScreenLocker:
         )
         await bus.call(msg)
 
+    async def set_active(self, active: bool) -> None:
+        """Set the screensaver active state."""
+        bus = await self._ensure_bus()
+        msg = Message(
+            destination=SCREEN_SAVER,
+            path=PATH,
+            interface=INTERFACE,
+            member="SetActive",
+            signature="b",
+            body=[active],
+        )
+        await bus.call(msg)
+
     async def get_idle_time(self) -> int:
         """Return seconds of session idle time."""
         bus = await self._ensure_bus()

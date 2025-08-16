@@ -20,6 +20,13 @@ def test_lock_invokes_dbus():
     bus.call.assert_awaited_once()
 
 
+def test_set_active_invokes_dbus():
+    bus = SimpleNamespace(call=AsyncMock())
+    locker = KDEScreenLocker(bus)
+    asyncio.run(locker.set_active(False))
+    bus.call.assert_awaited_once()
+
+
 def test_get_idle_time_returns_int():
     class Reply:
         body = [42]

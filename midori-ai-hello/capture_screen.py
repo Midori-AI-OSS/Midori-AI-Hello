@@ -1,4 +1,4 @@
-"""Textual TUI for capturing images and writing YOLO labels."""
+"""Textual screen for capturing images and writing YOLO labels."""
 
 from __future__ import annotations
 
@@ -6,10 +6,14 @@ import time
 from pathlib import Path
 from typing import Iterable, Tuple
 
-import cv2  # type: ignore
+try:  # pragma: no cover - environment dependent
+    import cv2  # type: ignore
+except Exception:  # pragma: no cover - handled gracefully
+    cv2 = None  # type: ignore
 import numpy as np
-from textual.app import App, ComposeResult
-from textual.widgets import Button, Static
+from textual.app import ComposeResult
+from textual.screen import Screen
+from textual.widgets import Static
 
 
 BBox = Tuple[int, int, int, int]
@@ -18,6 +22,8 @@ BBox = Tuple[int, int, int, int]
 def list_cameras(max_devices: int = 10) -> list[int]:
     """Return indices of available camera devices."""
     cameras: list[int] = []
+    if cv2 is None:
+        return cameras
     for index in range(max_devices):
         cap = cv2.VideoCapture(index)
         if cap.isOpened():
@@ -62,13 +68,12 @@ def save_sample(
     return image_path, label_path
 
 
-class LabelingApp(App):
-    """Minimal Textual interface for capturing and labeling images."""
+class CaptureScreen(Screen):
+    """Screen for capturing and labeling images."""
 
     BINDINGS = [
         ("c", "capture", "Capture"),
         ("n", "next_camera", "Next camera"),
-        ("q", "quit", "Quit"),
     ]
 
     def __init__(self, dataset_path: Path, cameras: Iterable[int] | None = None) -> None:
@@ -80,12 +85,14 @@ class LabelingApp(App):
 
     def compose(self) -> ComposeResult:  # type: ignore[override]
         yield Static("Press 'c' to capture or 'n' to switch camera")
-        yield Button("Quit", id="quit")
 
     def on_mount(self) -> None:  # type: ignore[override]
-        self._open_camera()
+        if cv2 is not None:
+            self._open_camera()
 
     def _open_camera(self) -> None:
+        if cv2 is None:
+            return
         if self._cap:
             self._cap.release()
         self._cap = cv2.VideoCapture(self.cameras[self._current])
@@ -95,7 +102,7 @@ class LabelingApp(App):
         self._open_camera()
 
     def action_capture(self) -> None:
-        if not self._cap:
+        if cv2 is None or not self._cap:
             return
         ok, frame = self._cap.read()
         if not ok:
@@ -105,6 +112,3 @@ class LabelingApp(App):
         cv2.destroyAllWindows()
         name = input("Subject name: ")
         save_sample(frame, face, body, name, str(self.cameras[self._current]), self.dataset_path)
-
-    def action_quit(self) -> None:
-        self.exit()
