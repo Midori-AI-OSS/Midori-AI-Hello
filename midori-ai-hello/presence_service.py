@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import Awaitable, Callable, List
 
@@ -17,6 +18,8 @@ except Exception:  # pragma: no cover - handled gracefully
     cv2 = None  # type: ignore
 
 from .whitelist import WhitelistManager
+
+log = logging.getLogger(__name__)
 
 Listener = Callable[[bool], Awaitable[None] | None]
 
@@ -85,15 +88,19 @@ class CameraPresenceService:
         """Return ``True`` if an authorised user is detected."""
 
         if cv2 is None:
+            log.warning("OpenCV not available; skipping camera scan")
             return False
         authorised = set(self._whitelist.users())
         for cam in self._cameras:
+            log.debug("Scanning camera %s", cam)
             cap = cv2.VideoCapture(cam)
             if not cap.isOpened():
+                log.warning("Camera %s could not be opened", cam)
                 continue
             ret, frame = cap.read()
             cap.release()
             if not ret:
+                log.warning("Failed to read from camera %s", cam)
                 continue
             results = model(frame)
             for r in results:
@@ -101,6 +108,9 @@ class CameraPresenceService:
                 boxes = getattr(getattr(r, "boxes", None), "cls", [])
                 for cls in boxes:
                     name = names.get(int(cls), str(cls))
+                    log.debug("Detected %s on camera %s", name, cam)
                     if name in authorised:
+                        log.info("Authorised user %s detected on camera %s", name, cam)
                         return True
+        log.debug("No authorised users detected on any camera")
         return False
