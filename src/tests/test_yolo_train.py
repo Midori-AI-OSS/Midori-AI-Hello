@@ -15,15 +15,15 @@ class FakeLocker:
 
 
 def write_config(tmp_path: Path) -> Path:
-    cfg = tmp_path / "config.toml"
+    cfg = tmp_path / "config.yaml"
     cfg.write_text(
         """
-        dataset = "dataset"
-        epochs = 1
-        batch = 1
-        idle_threshold = 10
-        model = "yolo11n.pt"
-        profile_hash = "profile.hash"
+dataset: dataset
+epochs: 1
+batch: 1
+idle_threshold: 10
+model: yolo11n.pt
+profile_hash: profile.hash
         """
     )
     (tmp_path / "dataset").mkdir()

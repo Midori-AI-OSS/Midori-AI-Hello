@@ -5,8 +5,10 @@ Implements encrypted storage for the whitelist of authorised users.
 - Profiles are stored in `~/.midoriai/whitelist.json`.
 - The encryption key derives from the SHA512 hash of the model weights
   combined with the SHA512 hash of a persistent secret in
-  `~/.midoriai/hellouuid.txt` (two newline-separated UUID4 values). If the
-  secret file is missing it is created once and reused thereafter.
+  `~/.midoriai/hellouuid.txt` (two newline-separated UUID4 values). The
+  manager verifies the file contains exactly two UUID4 entries and
+  regenerates it if malformed. If the secret file is missing it is created
+  once and reused thereafter.
 - `cryptography.fernet` handles symmetric encryption.
 - A companion `whitelist.hash` file records the hash used so the
   application can detect when the active model changes.

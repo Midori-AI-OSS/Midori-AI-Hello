@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Whitelist profile storage with model-based encryption.
 
 This module provides the :class:`WhitelistManager` class for managing a list
@@ -13,6 +11,8 @@ The encryption scheme uses :class:`cryptography.fernet.Fernet`. A companion
 ``whitelist.hash`` file stores the model hash used for encryption so that the
 application can detect when the active model has changed.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import base64
@@ -43,7 +43,18 @@ class WhitelistManager:
         return hashlib.sha512(data).hexdigest()
 
     def _host_hash(self) -> str:
-        if not self.uuid_file.exists():
+        if self.uuid_file.exists():
+            lines = [line.strip() for line in self.uuid_file.read_text().splitlines() if line.strip()]
+            valid = len(lines) == 2
+            if valid:
+                try:
+                    for line in lines:
+                        uuid.UUID(line)
+                except ValueError:
+                    valid = False
+            if not valid:
+                self.uuid_file.write_text(f"{uuid.uuid4()}\n{uuid.uuid4()}\n")
+        else:
             self.uuid_file.write_text(f"{uuid.uuid4()}\n{uuid.uuid4()}\n")
         secret = self.uuid_file.read_text()
         return hashlib.sha512(secret.encode()).hexdigest()
@@ -68,7 +79,17 @@ class WhitelistManager:
         if not self.whitelist_file.exists():
             return []
         token = self.whitelist_file.read_bytes()
-        data = self._fernet().decrypt(token)
+        current_hash = self._model_hash()
+        stored_hash = (
+            self.hash_file.read_text().strip()
+            if self.hash_file.exists()
+            else current_hash
+        )
+        if stored_hash == current_hash:
+            fernet = self._fernet()
+        else:
+            fernet = Fernet(self._derive_key(stored_hash, self._host_hash()))
+        data = fernet.decrypt(token)
         return json.loads(data.decode("utf-8"))
 
     # ------------------------------------------------------------------

@@ -1,12 +1,14 @@
 # Midori-AI-Hello
 
-Midori-AI Hello is a vision toolkit that lets you collect images, label them, and train YOLO models that integrate with KDE's screen locker.
+Midori-AI Hello is a vision toolkit that captures images, labels them, and trains YOLO models that integrate with KDE's screen locker.
 
 ## Features
 
-- Async DBus client for KDE's `org.freedesktop.ScreenSaver` interface
-- Textual TUI for capturing camera frames and saving YOLO-format labels
-- Idle-triggered scheduler that trains Ultralytics models on CPU
+- KDE screen lock integration through the `org.freedesktop.ScreenSaver` DBus API, automatically inhibiting locking while the app runs
+- Textual TUI for photo capture and YOLO-format labeling
+- Idle-triggered YOLO training scheduler that runs on CPU
+- Screen lock manager that locks after absence and unlocks when authorised users return
+- Multi-camera presence detection that recognises authorised users and feeds the lock manager
 
 ## Installation
 
@@ -18,7 +20,7 @@ uv sync
 
 ## Usage
 
-Run the placeholder TUI (prints a stub message for now):
+Launch the Textual interface:
 
 ```sh
 uv run midori_ai_hello

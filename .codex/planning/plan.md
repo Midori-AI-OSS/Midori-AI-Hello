@@ -12,7 +12,7 @@ Create a Rich-based TUI application that captures images from the user, maintain
 - **Profile Storage:** Encrypt authorized user profiles with a hash derived from the trained model. During retraining, keep a temporary unencrypted backup and re-encrypt once complete.
 - **Training Scheduler:**
   - Train on CPU during idle periods or when the user requests retraining.
-  - Config file (e.g., `config.toml`) stores paths, idle threshold, epoch counts, and hardware settings.
+  - Config file (e.g., `config.yaml`) stores paths, idle threshold, epoch counts, and hardware settings.
 - **Screen Lock Control:**
   - Detect authorized user presence with the model across all configured cameras.
   - Poll each camera for 1s every 10s. If no authorized user is seen on any feed, increase checks to every 5s for 1s until return.
