@@ -5,12 +5,16 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
 from .config import Config, load_config
 from .kde_lock import KDEScreenLocker
+
+
+log = logging.getLogger(__name__)
 
 
 class YOLOTrainingScheduler:
@@ -20,6 +24,7 @@ class YOLOTrainingScheduler:
         self._locker = locker
         self._config_path = Path(config_path)
         self._config: Config = load_config(self._config_path)
+        log.debug("Training scheduler loaded config from %s", self._config_path)
 
     async def maybe_train(self, force: bool = False) -> bool:
         """Run training if idle exceeds the configured threshold or *force*.
@@ -29,9 +34,14 @@ class YOLOTrainingScheduler:
 
         idle_time = await self._locker.get_idle_time()
         threshold = int(self._config.idle_threshold)
+        log.debug(
+            "Idle time %s seconds; threshold %s seconds", idle_time, threshold
+        )
         if force or idle_time >= threshold:
+            log.info("Starting training run")
             await asyncio.to_thread(self._train)
             return True
+        log.debug("Skipping training; idle time below threshold")
         return False
 
     def _dataset_yaml(self) -> Path:
@@ -66,6 +76,13 @@ class YOLOTrainingScheduler:
         batch = int(self._config.batch)
         model_path = self._config.model
         backend = self._config.backend
+        log.debug(
+            "Training with backend=%s, model=%s, epochs=%s, batch=%s",
+            backend,
+            model_path,
+            epochs,
+            batch,
+        )
         if backend == "yolov9":
             import subprocess
 
@@ -83,6 +100,7 @@ class YOLOTrainingScheduler:
             ]
             cwd = getattr(self._config, "yolov9_path", ".")
             subprocess.run(cmd, check=False, cwd=cwd)
+            log.info("YOLOv9 training subprocess finished")
         else:
             from ultralytics import YOLO  # type: ignore
 
@@ -94,3 +112,4 @@ class YOLOTrainingScheduler:
             if weights.exists():
                 self._update_profile_hash(weights)
                 self._mark_epoch(epochs)
+                log.info("Updated profile hash and metadata after training")

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from pathlib import Path
 
 from textual.app import App
@@ -19,6 +20,9 @@ from .screen_lock_manager import (
 )
 from .whitelist_screen import WhitelistScreen
 from .yolo_train import YOLOTrainingScheduler
+
+
+log = logging.getLogger(__name__)
 
 
 class PlaceholderScreen(Screen):
@@ -54,6 +58,7 @@ class MidoriApp(App):
         super().__init__()
         self._config_path = Path(config_path)
         self._config: Config = load_config(self._config_path)
+        log.debug("Loaded config from %s", self._config_path)
         self._locker = locker or KDEScreenLocker()
         self._scheduler = scheduler or YOLOTrainingScheduler(
             self._locker, self._config_path
@@ -81,9 +86,13 @@ class MidoriApp(App):
             PlaceholderScreen("Training status"),
             name="training",
         )
+        log.debug("Installed application screens")
         self.push_screen("capture")
+        log.debug("Pushed initial capture screen")
         self._train_task = asyncio.create_task(self._train_loop())
+        log.debug("Started training loop task")
         asyncio.create_task(self._lock_manager.start())
+        log.debug("Started screen lock manager")
 
     async def _train_loop(self) -> None:
         while True:
@@ -91,21 +100,27 @@ class MidoriApp(App):
             await asyncio.sleep(10)
 
     def action_view_capture(self) -> None:
+        log.debug("Switching to capture screen")
         self.switch_screen("capture")
 
     def action_view_whitelist(self) -> None:
+        log.debug("Switching to whitelist screen")
         self.switch_screen("whitelist")
 
     def action_view_config(self) -> None:
+        log.debug("Switching to config screen")
         self.switch_screen("config")
 
     def action_view_training(self) -> None:
+        log.debug("Switching to training screen")
         self.switch_screen("training")
 
     async def action_retrain(self) -> None:
+        log.info("Retrain requested")
         await self._scheduler.maybe_train(force=True)
 
     def action_quit(self) -> None:  # pragma: no cover - trivial
         if self._train_task:
             self._train_task.cancel()
+        log.debug("Application exiting")
         self.exit()

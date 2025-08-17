@@ -77,6 +77,7 @@ def save_sample(
     face_line = "0 {} {} {} {}".format(*_box_to_yolo(face_box, w, h))
     body_line = "1 {} {} {} {}".format(*_box_to_yolo(body_box, w, h))
     label_path.write_text(f"{face_line}\n{body_line}\n")
+    log.info("Saved sample image %s and labels %s", image_path, label_path)
     return image_path, label_path
 
 
@@ -126,6 +127,7 @@ class CaptureScreen(Screen):
     def action_capture(self) -> None:
         if cv2 is None or not self._cap:
             return
+        log.debug("Capturing frame from camera index %s", self.cameras[self._current])
         ok, frame = self._cap.read()
         if not ok:
             return
@@ -133,4 +135,11 @@ class CaptureScreen(Screen):
         body = cv2.selectROI("body", frame, showCrosshair=True)
         cv2.destroyAllWindows()
         name = input("Subject name: ")
-        save_sample(frame, face, body, name, str(self.cameras[self._current]), self.dataset_path)
+        save_sample(
+            frame,
+            face,
+            body,
+            name,
+            str(self.cameras[self._current]),
+            self.dataset_path,
+        )
