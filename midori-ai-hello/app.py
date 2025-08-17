@@ -20,6 +20,7 @@ from .screen_lock_manager import (
 )
 from .whitelist_screen import WhitelistScreen
 from .yolo_train import YOLOTrainingScheduler
+from .main_menu import MainMenuScreen
 
 
 log = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class MidoriApp(App):
         ("w", "view_whitelist", "Whitelist"),
         ("g", "view_config", "Config"),
         ("t", "view_training", "Training"),
+        ("m", "view_menu", "Menu"),
         ("r", "retrain", "Retrain"),
         ("q", "quit", "Quit"),
     ]
@@ -82,7 +84,11 @@ class MidoriApp(App):
         if not cam_ids:
             cam_ids = list_cameras()
         self.install_screen(
-            CaptureScreen(Path(self._config.dataset), cam_ids),
+            CaptureScreen(
+                Path(self._config.dataset),
+                cam_ids,
+                model_path=Path(self._config.model),
+            ),
             name="capture",
         )
         self.install_screen(
@@ -93,9 +99,10 @@ class MidoriApp(App):
             PlaceholderScreen("Training status"),
             name="training",
         )
+        self.install_screen(MainMenuScreen(), name="menu")
         log.debug("Installed application screens")
-        self.push_screen("capture")
-        log.debug("Pushed initial capture screen")
+        self.push_screen("menu")
+        log.debug("Pushed main menu screen")
         self._train_task = asyncio.create_task(self._train_loop())
         log.debug("Started training loop task")
         self._lock_task = asyncio.create_task(self._lock_manager.start())
@@ -121,6 +128,10 @@ class MidoriApp(App):
     def action_view_training(self) -> None:
         log.debug("Switching to training screen")
         self.switch_screen("training")
+
+    def action_view_menu(self) -> None:
+        log.debug("Switching to main menu")
+        self.switch_screen("menu")
 
     async def action_retrain(self) -> None:
         log.info("Retrain requested")

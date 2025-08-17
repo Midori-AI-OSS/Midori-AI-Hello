@@ -11,6 +11,10 @@ try:  # pragma: no cover - environment dependent
     import cv2  # type: ignore
 except Exception:  # pragma: no cover - handled gracefully
     cv2 = None  # type: ignore
+try:  # pragma: no cover - environment dependent
+    from ultralytics import YOLO  # type: ignore
+except Exception:  # pragma: no cover - handled gracefully
+    YOLO = None  # type: ignore
 import numpy as np
 from textual.app import ComposeResult
 from textual.screen import Screen
@@ -90,7 +94,10 @@ class CaptureScreen(Screen):
     ]
 
     def __init__(
-        self, dataset_path: Path, cameras: Iterable[int | str] | None = None
+        self,
+        dataset_path: Path,
+        cameras: Iterable[int | str] | None = None,
+        model_path: str | Path | None = None,
     ) -> None:
         super().__init__()
         self.dataset_path = Path(dataset_path)
@@ -100,6 +107,8 @@ class CaptureScreen(Screen):
         ]
         self._current = 0
         self._cap: cv2.VideoCapture | None = None
+        self.model_path = Path(model_path) if model_path else None
+        self._model: YOLO | None = None
 
     def compose(self) -> ComposeResult:  # type: ignore[override]
         yield Static("Press 'c' to capture or 'n' to switch camera")
@@ -107,6 +116,13 @@ class CaptureScreen(Screen):
     def on_mount(self) -> None:  # type: ignore[override]
         if cv2 is not None:
             self._open_camera()
+        if self.model_path and YOLO is not None:
+            try:
+                self._model = YOLO(str(self.model_path))
+                log.info("Loaded YOLO model %s", self.model_path)
+            except Exception:  # pragma: no cover - handled gracefully
+                log.warning("Failed to load YOLO model %s", self.model_path)
+                self._model = None
 
     def _open_camera(self) -> None:
         if cv2 is None:
@@ -139,9 +155,49 @@ class CaptureScreen(Screen):
         ok, frame = self._cap.read()
         if not ok:
             return
-        face = cv2.selectROI("face", frame, showCrosshair=True)
-        body = cv2.selectROI("body", frame, showCrosshair=True)
-        cv2.destroyAllWindows()
+
+        face: BBox | None = None
+        body: BBox | None = None
+        if self._model is not None:
+            try:
+                result = self._model(frame, verbose=False)[0]
+                for x1, y1, x2, y2, _, cls_id in result.boxes.data.tolist():
+                    box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
+                    if int(cls_id) == 0 and face is None:
+                        face = box
+                    elif int(cls_id) == 1 and body is None:
+                        body = box
+            except Exception:  # pragma: no cover - handled gracefully
+                log.warning("YOLO detection failed", exc_info=True)
+
+        if face and body:
+            preview = frame.copy()
+            cv2.rectangle(
+                preview,
+                (face[0], face[1]),
+                (face[0] + face[2], face[1] + face[3]),
+                (0, 255, 0),
+                2,
+            )
+            cv2.rectangle(
+                preview,
+                (body[0], body[1]),
+                (body[0] + body[2], body[1] + body[3]),
+                (255, 0, 0),
+                2,
+            )
+            cv2.imshow("detections (press y to accept)", preview)
+            key = cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            if key not in (ord("y"), ord("Y")):
+                face = cv2.selectROI("face", frame, showCrosshair=True)
+                body = cv2.selectROI("body", frame, showCrosshair=True)
+                cv2.destroyAllWindows()
+        else:
+            face = cv2.selectROI("face", frame, showCrosshair=True)
+            body = cv2.selectROI("body", frame, showCrosshair=True)
+            cv2.destroyAllWindows()
+
         name = input("Subject name: ")
         save_sample(
             frame,

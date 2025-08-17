@@ -10,10 +10,12 @@ from multiple cameras and writing YOLO-format labels.
 - `save_sample` stores an image under
   `dataset/images/<camera_id>/` and writes a matching label file under
   `dataset/labels/<camera_id>/` with normalized face (`class 0`) and body
-  (`class 1`) bounding boxes.
+  (`class 1`) bounding boxes. Required directories are created automatically.
 - `CaptureScreen` binds `c` to capture a frame and `n` to cycle cameras.
-  Capturing opens `cv2.selectROI` dialogs for face and body regions
-  before prompting for the subject name.
+  On capture it loads the configured Ultralytics YOLO model to auto-detect
+  face and body boxes. Detections are shown for confirmation and can be
+  rejected to fall back to manual `cv2.selectROI` dialogs before prompting
+  for the subject name.
   When no cameras are detected, the screen remains idle without
   attempting to open a device.
   Numeric camera IDs supplied as strings are coerced to integers, and
