@@ -44,3 +44,8 @@ def test_capture_screen_handles_empty_camera_list(tmp_path: Path):
     screen = CaptureScreen(tmp_path, cameras=[])
     screen._open_camera()
     assert screen._cap is None
+
+
+def test_capture_screen_converts_numeric_camera_ids(tmp_path: Path) -> None:
+    screen = CaptureScreen(tmp_path, cameras=["1"])
+    assert screen.cameras == [1]

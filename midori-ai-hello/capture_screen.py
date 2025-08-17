@@ -89,10 +89,15 @@ class CaptureScreen(Screen):
         ("n", "next_camera", "Next camera"),
     ]
 
-    def __init__(self, dataset_path: Path, cameras: Iterable[int] | None = None) -> None:
+    def __init__(
+        self, dataset_path: Path, cameras: Iterable[int | str] | None = None
+    ) -> None:
         super().__init__()
         self.dataset_path = Path(dataset_path)
-        self.cameras = list(cameras) if cameras is not None else [0]
+        raw = list(cameras) if cameras is not None else [0]
+        self.cameras = [
+            int(c) if isinstance(c, str) and c.isdigit() else c for c in raw
+        ]
         self._current = 0
         self._cap: cv2.VideoCapture | None = None
 
@@ -104,8 +109,11 @@ class CaptureScreen(Screen):
             self._open_camera()
 
     def _open_camera(self) -> None:
-        if cv2 is None or not self.cameras:
-            log.warning("No cameras configured or OpenCV missing")
+        if cv2 is None:
+            log.warning("OpenCV not available; cannot open cameras")
+            return
+        if not self.cameras:
+            log.warning("No cameras configured")
             return
         if self._cap:
             self._cap.release()
