@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 from typing import Awaitable, Callable
 
 from dbus_next import BusType, Message
 from dbus_next.aio import MessageBus
 from dbus_next.constants import MessageType
+
+
+log = logging.getLogger(__name__)
 
 SCREEN_SAVER = "org.freedesktop.ScreenSaver"
 PATH = "/org/freedesktop/ScreenSaver"
@@ -26,11 +30,13 @@ class KDEScreenLocker:
         """Connect to the session bus if one was not supplied."""
         if self._bus is None:
             self._bus = await MessageBus(bus_type=BusType.SESSION).connect()
+            log.debug("Connected to DBus session bus")
         return self._bus
 
     async def lock(self) -> None:
         """Trigger the desktop screen locker."""
         bus = await self._ensure_bus()
+        log.info("Locking screen via DBus")
         msg = Message(
             destination=SCREEN_SAVER,
             path=PATH,
@@ -42,6 +48,7 @@ class KDEScreenLocker:
     async def set_active(self, active: bool) -> None:
         """Set the screensaver active state."""
         bus = await self._ensure_bus()
+        log.debug("Setting screensaver active=%s", active)
         msg = Message(
             destination=SCREEN_SAVER,
             path=PATH,
@@ -62,11 +69,14 @@ class KDEScreenLocker:
             member="GetSessionIdleTime",
         )
         reply = await bus.call(msg)
-        return int(reply.body[0])
+        idle = int(reply.body[0])
+        log.debug("Session idle time %s seconds", idle)
+        return idle
 
     async def inhibit(self, reason: str) -> int:
         """Disable automatic screen locking and return an inhibition cookie."""
         bus = await self._ensure_bus()
+        log.debug("Inhibiting screensaver: %s", reason)
         msg = Message(
             destination=SCREEN_SAVER,
             path=PATH,
@@ -76,11 +86,14 @@ class KDEScreenLocker:
             body=["midori-ai-hello", reason],
         )
         reply = await bus.call(msg)
-        return int(reply.body[0])
+        cookie = int(reply.body[0])
+        log.debug("Inhibit cookie %s", cookie)
+        return cookie
 
     async def uninhibit(self, cookie: int) -> None:
         """Re-enable automatic screen locking for a prior inhibition cookie."""
         bus = await self._ensure_bus()
+        log.debug("Uninhibiting screensaver cookie %s", cookie)
         msg = Message(
             destination=SCREEN_SAVER,
             path=PATH,
@@ -103,6 +116,7 @@ class KDEScreenLocker:
                 and msg.member == "ActiveChanged"
             ):
                 state = bool(msg.body[0])
+                log.debug("Received ActiveChanged signal: %s", state)
                 result = handler(state)
                 if inspect.isawaitable(result):
                     asyncio.create_task(result)
@@ -111,6 +125,7 @@ class KDEScreenLocker:
 
         bus = await self._ensure_bus()
         bus.add_message_handler(_wrapper)
+        log.debug("Added ActiveChanged handler")
         await bus.call(
             Message(
                 destination="org.freedesktop.DBus",

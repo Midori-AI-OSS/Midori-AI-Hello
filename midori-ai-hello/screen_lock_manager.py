@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Awaitable, Callable, Protocol
 
 from .kde_lock import KDEScreenLocker
+
+
+log = logging.getLogger(__name__)
 
 
 class PresenceService(Protocol):
@@ -41,10 +45,14 @@ class ScreenLockManager:
 
     async def start(self) -> None:
         """Begin listening for presence and lock state changes."""
+        log.debug(
+            "Starting ScreenLockManager with absent_timeout=%s", self._absent_timeout
+        )
         await self._locker.add_active_changed_handler(self._on_active_changed)
         self._presence.add_listener(self._on_presence)
 
     def _on_presence(self, present: bool) -> None:
+        log.info("Presence %s", "detected" if present else "lost")
         if present:
             if self._lock_task:
                 self._lock_task.cancel()
@@ -58,13 +66,19 @@ class ScreenLockManager:
 
     async def _lock_after_delay(self) -> None:
         try:
+            log.debug(
+                "Absent for %s seconds, will lock screen", self._absent_timeout
+            )
             await asyncio.sleep(self._absent_timeout)
             await self._locker.lock()
+            log.info("Screen locked due to absence")
         except asyncio.CancelledError:
-            pass
+            log.debug("Lock delayed cancelled")
         finally:
             self._lock_task = None
 
     async def _on_active_changed(self, active: bool) -> None:
         self._locked = active
-        self._notify("Locked" if active else "Unlocked")
+        state = "Locked" if active else "Unlocked"
+        log.info("Screen %s", state.lower())
+        self._notify(state)

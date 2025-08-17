@@ -44,6 +44,11 @@ class CameraPresenceService:
         self._present = False
         self._present_interval = present_interval
         self._absent_interval = absent_interval
+        log.debug(
+            "Initialised presence service with cameras %s using model %s",
+            cameras,
+            model_path,
+        )
 
     def add_listener(self, callback: Listener) -> None:
         """Register *callback* for presence changes."""
@@ -68,7 +73,9 @@ class CameraPresenceService:
 
         if YOLO is None:  # pragma: no cover - dependency missing
             return
+        log.debug("Loading YOLO model from %s", self._model_path)
         model = YOLO(self._model_path)
+        log.debug("Starting presence polling loop")
         try:
             while True:
                 present = await asyncio.to_thread(self._scan_once, model)

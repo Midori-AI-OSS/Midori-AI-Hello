@@ -14,14 +14,18 @@ application can detect when the active model has changed.
 
 from __future__ import annotations
 
-from pathlib import Path
 import base64
 import hashlib
 import json
+import logging
 import uuid
+from pathlib import Path
 from typing import List
 
 from cryptography.fernet import Fernet
+
+
+log = logging.getLogger(__name__)
 
 
 class WhitelistManager:
@@ -34,6 +38,7 @@ class WhitelistManager:
         self.whitelist_file = self.config_dir / "whitelist.json"
         self.hash_file = self.config_dir / "whitelist.hash"
         self.uuid_file = self.config_dir / "hellouuid.txt"
+        log.debug("WhitelistManager initialised at %s", self.config_dir)
 
     # ------------------------------------------------------------------
     # Key handling
@@ -100,12 +105,14 @@ class WhitelistManager:
         if name not in profiles:
             profiles.append(name)
             self._write(profiles)
+            log.info("Added user %s to whitelist", name)
 
     def remove_user(self, name: str) -> None:
         profiles = self._read()
         if name in profiles:
             profiles.remove(name)
             self._write(profiles)
+            log.info("Removed user %s from whitelist", name)
 
     def users(self) -> List[str]:
         return self._read()
