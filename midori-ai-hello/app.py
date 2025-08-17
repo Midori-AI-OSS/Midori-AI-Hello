@@ -9,7 +9,7 @@ from textual.app import App
 from textual.screen import Screen
 from textual.widgets import Static
 
-from .capture_screen import CaptureScreen
+from .capture_screen import CaptureScreen, list_cameras
 from .config import load_config, Config
 from .config_screen import ConfigScreen
 from .kde_lock import KDEScreenLocker
@@ -68,14 +68,21 @@ class MidoriApp(App):
             self._locker, self._presence, notify=self._update_lock_state
         )
         self._train_task: asyncio.Task[None] | None = None
+        self._lock_task: asyncio.Task[None] | None = None
 
     def _update_lock_state(self, state: str) -> None:
         self.sub_title = state
         self.notify(state)
 
     def on_mount(self) -> None:  # type: ignore[override]
+        cam_ids = [
+            int(c) if isinstance(c, str) and c.isdigit() else c
+            for c in self._config.cameras
+        ]
+        if not cam_ids:
+            cam_ids = list_cameras()
         self.install_screen(
-            CaptureScreen(Path(self._config.dataset), self._config.cameras),
+            CaptureScreen(Path(self._config.dataset), cam_ids),
             name="capture",
         )
         self.install_screen(
@@ -91,7 +98,7 @@ class MidoriApp(App):
         log.debug("Pushed initial capture screen")
         self._train_task = asyncio.create_task(self._train_loop())
         log.debug("Started training loop task")
-        asyncio.create_task(self._lock_manager.start())
+        self._lock_task = asyncio.create_task(self._lock_manager.start())
         log.debug("Started screen lock manager")
 
     async def _train_loop(self) -> None:
@@ -122,5 +129,7 @@ class MidoriApp(App):
     def action_quit(self) -> None:  # pragma: no cover - trivial
         if self._train_task:
             self._train_task.cancel()
+        if self._lock_task and not self._lock_task.done():
+            self._lock_task.cancel()
         log.debug("Application exiting")
         self.exit()

@@ -8,3 +8,5 @@ screen locker via `KDEScreenLocker`.
   unlock the session.
 - Lock state changes are reported back to the TUI through a callback so the
   current state can be displayed to the user.
+- The application retains the startup task and cancels it during shutdown to
+  prevent pending-task warnings.

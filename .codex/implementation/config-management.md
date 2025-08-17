@@ -13,3 +13,6 @@ The application stores settings in ``config.yaml`` using the following keys:
 
 Saving the configuration automatically creates camera-specific directories
 under ``dataset/images/<camera_id>`` and ``dataset/labels/<camera_id>``.
+When ``cameras`` is empty, ``MidoriApp`` calls ``list_cameras()`` to
+automatically detect available webcams. Numeric IDs stored as strings
+are coerced to integers before opening devices.
