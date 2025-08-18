@@ -88,6 +88,7 @@ class MidoriApp(App):
                 Path(self._config.dataset),
                 cam_ids,
                 model_path=Path(self._config.model),
+                device=self._config.device,
             ),
             name="capture",
         )

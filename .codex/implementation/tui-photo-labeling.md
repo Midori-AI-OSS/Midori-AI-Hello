@@ -12,7 +12,8 @@ from multiple cameras and writing YOLO-format labels.
   `dataset/labels/<camera_id>/` with normalized face (`class 0`) and body
   (`class 1`) bounding boxes. Required directories are created automatically.
 - `CaptureScreen` binds `c` to capture a frame and `n` to cycle cameras.
-  On capture it loads the configured Ultralytics YOLO model to auto-detect
+  On capture it loads the configured Ultralytics YOLO model on the selected
+  device to auto-detect
   face and body boxes. Detections are shown for confirmation and can be
   rejected to fall back to manual `cv2.selectROI` dialogs before prompting
   for the subject name.

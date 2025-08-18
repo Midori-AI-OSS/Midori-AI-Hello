@@ -35,6 +35,7 @@ class CameraPresenceService:
         *,
         present_interval: float = 10.0,
         absent_interval: float = 5.0,
+        device: str = "cpu",
     ) -> None:
         self._cameras = cameras
         self._model_path = str(model_path)
@@ -44,6 +45,7 @@ class CameraPresenceService:
         self._present = False
         self._present_interval = present_interval
         self._absent_interval = absent_interval
+        self._device = device
         log.debug(
             "Initialised presence service with cameras %s using model %s",
             cameras,
@@ -73,8 +75,8 @@ class CameraPresenceService:
 
         if YOLO is None:  # pragma: no cover - dependency missing
             return
-        log.debug("Loading YOLO model from %s", self._model_path)
-        model = YOLO(self._model_path)
+        log.debug("Loading YOLO model from %s on %s", self._model_path, self._device)
+        model = YOLO(self._model_path).to(self._device)
         log.debug("Starting presence polling loop")
         try:
             while True:

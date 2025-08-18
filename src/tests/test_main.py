@@ -53,7 +53,9 @@ def test_main_inhibits_screensaver(monkeypatch):
     monkeypatch.setattr(cli, "load_config", lambda path: DummyConfig())
     monkeypatch.setattr(cli, "WhitelistManager", lambda path: object())
     monkeypatch.setattr(
-        cli, "CameraPresenceService", lambda cams, model, wl: object()
+        cli,
+        "CameraPresenceService",
+        lambda cams, model, wl, device="cpu": object(),
     )
 
     cli.main([])

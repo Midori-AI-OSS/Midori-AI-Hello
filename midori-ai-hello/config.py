@@ -18,6 +18,8 @@ class Config:
     batch: int
     idle_threshold: int
     model: str
+    device: str = "cpu"
+    model_size: str = "n"
     backend: str = "ultralytics"
     cameras: List[str] = field(default_factory=list)
     profile_hash: str | None = None
@@ -27,12 +29,16 @@ class Config:
         data = {}
         if path.exists():
             data = yaml.safe_load(path.read_text()) or {}
+        model_size = str(data.get("model_size", "n"))
+        model = str(data.get("model", f"yolo11{model_size}.pt"))
         return cls(
             dataset=str(data.get("dataset", "dataset")),
             epochs=int(data.get("epochs", 1)),
             batch=int(data.get("batch", 1)),
             idle_threshold=int(data.get("idle_threshold", 0)),
-            model=str(data.get("model", "yolo11n.pt")),
+            model=model,
+            device=str(data.get("device", "cpu")),
+            model_size=model_size,
             backend=str(data.get("backend", "ultralytics")),
             cameras=[str(c) for c in data.get("cameras", [])][:20],
             profile_hash=data.get("profile_hash"),
@@ -46,6 +52,8 @@ class Config:
             "batch": self.batch,
             "idle_threshold": self.idle_threshold,
             "model": self.model,
+            "device": self.device,
+            "model_size": self.model_size,
             "backend": self.backend,
             "cameras": self.cameras[:20],
         }
@@ -60,6 +68,8 @@ class Config:
                 setattr(self, key, value)
         if "cameras" in kwargs:
             self.cameras = [str(c) for c in self.cameras][:20]
+        if "model_size" in kwargs and "model" not in kwargs:
+            self.model = f"yolo11{self.model_size}.pt"
         self.save(path)
         return self
 
