@@ -90,7 +90,7 @@ class YOLOTrainingScheduler:
                 "python",
                 "train.py",
                 "--device",
-                "cpu",
+                self._config.device,
                 "--data",
                 str(dataset_yaml),
                 "--epochs",
@@ -106,7 +106,10 @@ class YOLOTrainingScheduler:
 
             model = YOLO(model_path)
             result = model.train(
-                data=str(dataset_yaml), epochs=epochs, batch=batch, device="cpu"
+                data=str(dataset_yaml),
+                epochs=epochs,
+                batch=batch,
+                device=self._config.device,
             )
             weights = Path(result.save_dir) / "weights" / "last.pt"
             if weights.exists():

@@ -20,8 +20,12 @@ def test_presence_service_emits_events(monkeypatch):
             absent_interval=0.01,
         )
 
+        class DummyModel:
+            def to(self, device):  # pragma: no cover - simple stub
+                return self
+
         monkeypatch.setattr(
-            "midori_ai_hello.presence_service.YOLO", lambda path: object()
+            "midori_ai_hello.presence_service.YOLO", lambda path: DummyModel()
         )
 
         results = iter([False, True, False])

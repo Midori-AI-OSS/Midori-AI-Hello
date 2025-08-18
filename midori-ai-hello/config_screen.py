@@ -31,6 +31,10 @@ class ConfigScreen(Screen):
         )
         yield Input(value=self._config.model, placeholder="Model", id="model")
         yield Input(value=self._config.backend, placeholder="Backend", id="backend")
+        yield Input(value=self._config.device, placeholder="Device", id="device")
+        yield Input(
+            value=self._config.model_size, placeholder="Model size", id="model_size"
+        )
         self._camera_list = ListView(*[Static(c) for c in self._config.cameras])
         yield self._camera_list
         yield Button("Add Camera", id="add_cam")

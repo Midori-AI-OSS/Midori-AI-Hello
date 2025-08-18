@@ -98,6 +98,8 @@ class CaptureScreen(Screen):
         dataset_path: Path,
         cameras: Iterable[int | str] | None = None,
         model_path: str | Path | None = None,
+        *,
+        device: str = "cpu",
     ) -> None:
         super().__init__()
         self.dataset_path = Path(dataset_path)
@@ -109,6 +111,7 @@ class CaptureScreen(Screen):
         self._cap: cv2.VideoCapture | None = None
         self.model_path = Path(model_path) if model_path else None
         self._model: YOLO | None = None
+        self._device = device
 
     def compose(self) -> ComposeResult:  # type: ignore[override]
         yield Static("Press 'c' to capture or 'n' to switch camera")
@@ -118,8 +121,10 @@ class CaptureScreen(Screen):
             self._open_camera()
         if self.model_path and YOLO is not None:
             try:
-                self._model = YOLO(str(self.model_path))
-                log.info("Loaded YOLO model %s", self.model_path)
+                self._model = YOLO(str(self.model_path)).to(self._device)
+                log.info(
+                    "Loaded YOLO model %s on %s", self.model_path, self._device
+                )
             except Exception:  # pragma: no cover - handled gracefully
                 log.warning("Failed to load YOLO model %s", self.model_path)
                 self._model = None
