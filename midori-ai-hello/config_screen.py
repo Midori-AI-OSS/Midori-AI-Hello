@@ -45,7 +45,15 @@ class ConfigScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:  # type: ignore[override]
         if event.button.id == "add_cam":
             new_id = str(len(self._config.cameras))
+            try:
+                self.app.status = "Adding camera..."
+            except Exception:
+                pass
             self._config.cameras.append(new_id)
             update_config(self._config_path, cameras=self._config.cameras)
             self._camera_list.append(Static(new_id))
+            try:
+                self.app.status = "Config updated"
+            except Exception:
+                pass
 

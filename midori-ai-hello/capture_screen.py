@@ -208,6 +208,10 @@ class CaptureScreen(Screen):
             cv2.destroyAllWindows()
 
         name = input("Subject name: ")
+        try:
+            self.app.status = "Saving sample..."
+        except Exception:
+            pass
         save_sample(
             frame,
             face,
@@ -216,6 +220,10 @@ class CaptureScreen(Screen):
             str(self.cameras[self._current]),
             self.dataset_path,
         )
+        try:
+            self.app.status = "Sample saved"
+        except Exception:
+            pass
         if self._cap:
             self._cap.release()
             self._cap = None
