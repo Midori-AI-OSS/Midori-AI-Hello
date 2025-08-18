@@ -148,6 +148,10 @@ class CaptureScreen(Screen):
         self._current = (self._current + 1) % len(self.cameras)
         self._open_camera()
 
+    def on_show(self) -> None:  # type: ignore[override]
+        if cv2 is not None and self._cap is None:
+            self._open_camera()
+
     def action_capture(self) -> None:
         if cv2 is None or not self._cap:
             return
@@ -207,3 +211,7 @@ class CaptureScreen(Screen):
             str(self.cameras[self._current]),
             self.dataset_path,
         )
+        if self._cap:
+            self._cap.release()
+            self._cap = None
+        self.app.switch_screen("menu")
