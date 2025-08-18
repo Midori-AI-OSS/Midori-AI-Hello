@@ -9,6 +9,7 @@ Midori-AI Hello is a vision toolkit that captures images, labels them, and train
 - Idle-triggered YOLO training scheduler that runs on CPU
 - Screen lock manager that locks after absence and unlocks when authorised users return
 - Multi-camera presence detection that recognises authorised users and feeds the lock manager
+- Status bar shows current actions and lock state across screens
 
 ## Installation
 

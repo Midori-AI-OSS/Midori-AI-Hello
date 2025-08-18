@@ -12,3 +12,5 @@ capture interface and management screens:
 - Global bindings (`c`, `w`, `g`, `t`, `m`, `r`, `q`) switch screens, retrain,
   show the menu, or exit.
 - `YOLOTrainingScheduler` runs in a background task with manual retrain via `r`.
+- A global footer displays `app.status`, surfacing lock state changes and long-
+  running actions across all screens.

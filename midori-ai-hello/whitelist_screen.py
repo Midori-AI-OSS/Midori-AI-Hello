@@ -56,17 +56,41 @@ class WhitelistScreen(Screen):
     def action_add_user(self, name: str | None = None) -> None:
         name = name or self._name_input.value.strip()
         if name:
+            try:
+                self.app.status = f"Adding {name}..."
+            except Exception:
+                pass
             self._manager.add_user(name)
             self._name_input.value = ""
             self._refresh()
+            try:
+                self.app.status = "Whitelist updated"
+            except Exception:
+                pass
 
     def action_remove_user(self, name: str | None = None) -> None:
         name = name or self._name_input.value.strip()
         if name:
+            try:
+                self.app.status = f"Removing {name}..."
+            except Exception:
+                pass
             self._manager.remove_user(name)
             self._name_input.value = ""
             self._refresh()
+            try:
+                self.app.status = "Whitelist updated"
+            except Exception:
+                pass
 
     def action_reencrypt(self) -> None:
+        try:
+            self.app.status = "Re-encrypting whitelist..."
+        except Exception:
+            pass
         self._manager.reencrypt()
         self._refresh()
+        try:
+            self.app.status = "Whitelist re-encrypted"
+        except Exception:
+            pass

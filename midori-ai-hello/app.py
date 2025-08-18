@@ -5,9 +5,10 @@ import asyncio
 import logging
 from pathlib import Path
 
-from textual.app import App
+from textual.app import App, ComposeResult
+from textual.reactive import reactive
 from textual.screen import Screen
-from textual.widgets import Static
+from textual.widgets import Static, Footer
 
 from .capture_screen import CaptureScreen, list_cameras
 from .config import load_config, Config
@@ -72,8 +73,19 @@ class MidoriApp(App):
         self._train_task: asyncio.Task[None] | None = None
         self._lock_task: asyncio.Task[None] | None = None
 
+    status: str = reactive("")
+
+    def compose(self) -> ComposeResult:  # type: ignore[override]
+        yield Footer()
+
+    def watch_status(self, status: str) -> None:
+        footer = getattr(self, "footer", None)
+        if footer:
+            footer.update(status)
+
     def _update_lock_state(self, state: str) -> None:
         self.sub_title = state
+        self.status = state
         self.notify(state)
 
     def on_mount(self) -> None:  # type: ignore[override]
