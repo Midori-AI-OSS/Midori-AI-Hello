@@ -14,3 +14,5 @@ capture interface and management screens:
 - `YOLOTrainingScheduler` runs in a background task with manual retrain via `r`.
 - A global footer displays `app.status`, surfacing lock state changes and long-
   running actions across all screens.
+- Individual screens expose key hints (`Esc` to return to the menu, `q` to quit)
+  and tooltips on interactive widgets for additional guidance.

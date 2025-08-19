@@ -13,6 +13,11 @@ from .whitelist import WhitelistManager
 class WhitelistScreen(Screen):
     """Screen allowing users to manage the encrypted whitelist."""
 
+    BINDINGS = [
+        ("escape", "menu", "Back to menu"),
+        ("q", "quit", "Quit"),
+    ]
+
     def __init__(self, model_path: Path, config_dir: Path | None = None) -> None:
         super().__init__()
         self._manager = WhitelistManager(model_path, config_dir=config_dir)
@@ -23,11 +28,23 @@ class WhitelistScreen(Screen):
         yield self._status
         self._users = Static(id="users")
         yield self._users
-        self._name_input = Input(placeholder="Name", id="name")
+        self._name_input = Input(
+            placeholder="Name",
+            id="name",
+            tooltip="Enter the user name to add or remove",
+        )
         yield self._name_input
-        yield Button("Add", id="add")
-        yield Button("Remove", id="remove")
-        yield Button("Re-encrypt", id="reencrypt")
+        yield Button("Add", id="add", tooltip="Add the name to the whitelist")
+        yield Button(
+            "Remove",
+            id="remove",
+            tooltip="Remove the name from the whitelist",
+        )
+        yield Button(
+            "Re-encrypt",
+            id="reencrypt",
+            tooltip="Re-encrypt the stored whitelist",
+        )
         self._refresh()
 
     # ------------------------------------------------------------------
@@ -94,3 +111,6 @@ class WhitelistScreen(Screen):
             self.app.status = "Whitelist re-encrypted"
         except Exception:
             pass
+
+    def action_menu(self) -> None:  # pragma: no cover - trivial
+        self.app.switch_screen("menu")

@@ -12,6 +12,8 @@ from .capture_screen import list_cameras
 class MainMenuScreen(Screen):
     """Initial menu guiding the user through application features."""
 
+    BINDINGS = [("q", "quit", "Quit")]
+
     def compose(self) -> ComposeResult:  # type: ignore[override]
         config = getattr(self.app, "_config", None)
         if config and not config.cameras and not list_cameras():
@@ -20,11 +22,27 @@ class MainMenuScreen(Screen):
                 id="help",
             )
         yield OptionList(
-            Option("Capture photos", id="capture"),
-            Option("Manage whitelist", id="whitelist"),
-            Option("View training status", id="training"),
-            Option("Configure cameras", id="config"),
-            Option("Quit", id="quit"),
+            Option(
+                "Capture photos",
+                id="capture",
+                tooltip="Capture images and label them",
+            ),
+            Option(
+                "Manage whitelist",
+                id="whitelist",
+                tooltip="Add or remove authorised users",
+            ),
+            Option(
+                "View training status",
+                id="training",
+                tooltip="Check current model training progress",
+            ),
+            Option(
+                "Configure cameras",
+                id="config",
+                tooltip="Set up available camera devices",
+            ),
+            Option("Quit", id="quit", tooltip="Exit the application"),
         )
 
     def on_option_list_option_selected(
