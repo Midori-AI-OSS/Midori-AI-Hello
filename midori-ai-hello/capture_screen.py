@@ -91,6 +91,8 @@ class CaptureScreen(Screen):
     BINDINGS = [
         ("c", "capture", "Capture"),
         ("n", "next_camera", "Next camera"),
+        ("escape", "menu", "Back to menu"),
+        ("q", "quit", "Quit"),
     ]
 
     def __init__(
@@ -152,6 +154,9 @@ class CaptureScreen(Screen):
             return
         self._current = (self._current + 1) % len(self.cameras)
         self._open_camera()
+
+    def action_menu(self) -> None:  # pragma: no cover - trivial
+        self.app.switch_screen("menu")
 
     def on_show(self) -> None:  # type: ignore[override]
         if cv2 is not None and self._cap is None:
