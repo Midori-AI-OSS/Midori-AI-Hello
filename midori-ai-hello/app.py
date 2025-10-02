@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
@@ -68,10 +70,16 @@ class MidoriApp(App):
         )
         self._presence = presence_service or NullPresenceService()
         self._lock_manager = ScreenLockManager(
-            self._locker, self._presence, notify=self._update_lock_state
+            self._locker, self._presence, notify=self._handle_lock_event
         )
         self._train_task: asyncio.Task[None] | None = None
         self._lock_task: asyncio.Task[None] | None = None
+        self._status_message: str = ""
+        self._last_capture_at: datetime | None = None
+        self._last_detected: bool | None = None
+        self._lock_deadline: datetime | None = None
+        self._present: bool | None = None
+        self._locked: bool = False
 
     status: str = reactive("")
 
@@ -79,14 +87,68 @@ class MidoriApp(App):
         yield Footer()
 
     def watch_status(self, status: str) -> None:
+        self._status_message = status
+        self._refresh_footer()
+
+    def _refresh_footer(self) -> None:
         footer = getattr(self, "footer", None)
         if footer:
-            footer.update(status)
+            footer.update(self._format_footer())
 
-    def _update_lock_state(self, state: str) -> None:
-        self.sub_title = state
-        self.status = state
-        self.notify(state)
+    def _format_footer(self) -> str:
+        parts: list[str] = []
+        if self._status_message:
+            parts.append(self._status_message)
+        lock_state = "Locked" if self._locked else "Unlocked"
+        parts.append(f"Lock: {lock_state}")
+        if self._present is not None:
+            presence = "Present" if self._present else "Away"
+            parts.append(f"Presence: {presence}")
+        if self._last_capture_at is not None:
+            timestamp = self._last_capture_at.strftime("%H:%M:%S")
+            detected_label = ""
+            if self._last_detected is True:
+                detected_label = "auto"
+            elif self._last_detected is False:
+                detected_label = "manual"
+            capture_segment = f"Last capture: {timestamp}"
+            if detected_label:
+                capture_segment += f" ({detected_label})"
+            parts.append(capture_segment)
+        if self._lock_deadline is not None:
+            now = datetime.now()
+            remaining = max(0, int((self._lock_deadline - now).total_seconds()))
+            if remaining > 0:
+                parts.append(f"Lock in {remaining}s")
+        return " | ".join(parts)
+
+    def record_capture_event(self, detected: bool, when: datetime) -> None:
+        self._last_detected = detected
+        self._last_capture_at = when
+        self._refresh_footer()
+
+    def _handle_lock_event(self, event: tuple[str, Any]) -> None:
+        kind, payload = event
+        if kind == "presence":
+            self._present = bool(payload)
+            if self._present:
+                self._lock_deadline = None
+        elif kind == "countdown":
+            if payload is None:
+                self._lock_deadline = None
+            else:
+                seconds = float(payload)
+                self._lock_deadline = datetime.now() + timedelta(seconds=seconds)
+        elif kind == "lock":
+            active = bool(payload)
+            self._locked = active
+            state = "Locked" if active else "Unlocked"
+            self.sub_title = state
+            self.status = state
+            self.notify(state)
+        else:
+            log.debug("Unknown lock event %s", event)
+        self._refresh_footer()
 
     def on_mount(self) -> None:  # type: ignore[override]
         cam_ids = [

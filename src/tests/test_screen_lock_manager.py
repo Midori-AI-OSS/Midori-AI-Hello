@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable
+from typing import Any, Callable
 
 from midori_ai_hello.screen_lock_manager import ScreenLockManager
 
@@ -38,7 +38,7 @@ class FakePresence:
 
 
 def test_lock_and_unlock() -> None:
-    messages: list[str] = []
+    messages: list[tuple[str, Any]] = []
     locker = FakeLocker()
     presence = FakePresence()
 
@@ -55,7 +55,9 @@ def test_lock_and_unlock() -> None:
     asyncio.run(run())
     assert "lock" in locker.events
     assert "set_active:False" in locker.events
-    assert messages[-1] == "Unlocked"
+    assert ("presence", False) in messages
+    assert any(kind == "countdown" and value is None for kind, value in messages)
+    assert messages[-1] == ("lock", False)
 
 
 def test_presence_cancels_lock() -> None:
