@@ -80,20 +80,26 @@ class MidoriApp(App):
         self._lock_deadline: datetime | None = None
         self._present: bool | None = None
         self._locked: bool = False
+        self._status_bar: Static | None = None
 
     status: str = reactive("")
 
     def compose(self) -> ComposeResult:  # type: ignore[override]
-        yield Footer()
+        footer = Footer()
+        footer.styles.dock = "bottom"
+        self._status_bar = Static("", classes="status-bar")
+        self._status_bar.styles.dock = "bottom"
+        yield footer
+        yield self._status_bar
+        self.call_after_refresh(self._refresh_footer)
 
     def watch_status(self, status: str) -> None:
         self._status_message = status
         self._refresh_footer()
 
     def _refresh_footer(self) -> None:
-        footer = getattr(self, "footer", None)
-        if footer:
-            footer.update(self._format_footer())
+        if self._status_bar is not None:
+            self._status_bar.update(self._format_footer())
 
     def _format_footer(self) -> str:
         parts: list[str] = []
