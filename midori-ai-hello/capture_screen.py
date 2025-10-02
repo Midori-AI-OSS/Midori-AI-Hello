@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Tuple
 
@@ -172,6 +173,7 @@ class CaptureScreen(Screen):
 
         face: BBox | None = None
         body: BBox | None = None
+        auto_detected = False
         if self._model is not None:
             try:
                 result = self._model(frame, verbose=False)[0]
@@ -181,6 +183,7 @@ class CaptureScreen(Screen):
                         face = box
                     elif int(cls_id) == 1 and body is None:
                         body = box
+                auto_detected = face is not None and body is not None
             except Exception:  # pragma: no cover - handled gracefully
                 log.warning("YOLO detection failed", exc_info=True)
 
@@ -204,10 +207,12 @@ class CaptureScreen(Screen):
             key = cv2.waitKey(0)
             cv2.destroyAllWindows()
             if key not in (ord("y"), ord("Y")):
+                auto_detected = False
                 face = cv2.selectROI("face", frame, showCrosshair=True)
                 body = cv2.selectROI("body", frame, showCrosshair=True)
                 cv2.destroyAllWindows()
         else:
+            auto_detected = False
             face = cv2.selectROI("face", frame, showCrosshair=True)
             body = cv2.selectROI("body", frame, showCrosshair=True)
             cv2.destroyAllWindows()
@@ -225,6 +230,10 @@ class CaptureScreen(Screen):
             str(self.cameras[self._current]),
             self.dataset_path,
         )
+        try:
+            self.app.record_capture_event(auto_detected, datetime.now())
+        except Exception:
+            pass
         try:
             self.app.status = "Sample saved"
         except Exception:
