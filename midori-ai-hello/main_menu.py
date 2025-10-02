@@ -25,24 +25,32 @@ class MainMenuScreen(Screen):
             Option(
                 "Capture photos",
                 id="capture",
-                tooltip="Capture images and label them",
             ),
             Option(
                 "Manage whitelist",
                 id="whitelist",
-                tooltip="Add or remove authorised users",
             ),
             Option(
                 "View training status",
                 id="training",
-                tooltip="Check current model training progress",
             ),
             Option(
                 "Configure cameras",
                 id="config",
-                tooltip="Set up available camera devices",
             ),
-            Option("Quit", id="quit", tooltip="Exit the application"),
+            Option("Quit", id="quit"),
+        )
+        yield Static(
+            "\n".join(
+                (
+                    "Capture photos – Capture images and label them.",
+                    "Manage whitelist – Add or remove authorised users.",
+                    "View training status – Check current model training progress.",
+                    "Configure cameras – Set up available camera devices.",
+                    "Quit – Exit the application.",
+                )
+            ),
+            id="menu-help",
         )
 
     def on_option_list_option_selected(
