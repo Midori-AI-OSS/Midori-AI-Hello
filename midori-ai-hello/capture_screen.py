@@ -147,6 +147,7 @@ class CaptureScreen(Screen):
         self.model_path = Path(model_path) if model_path else None
         self._model: YOLO | None = None
         self._device = device
+        self._capture_in_progress = False
 
     def compose(self) -> ComposeResult:  # type: ignore[override]
         yield Static("Press 'c' to capture or 'n' to switch camera")
@@ -199,125 +200,133 @@ class CaptureScreen(Screen):
             self._open_camera()
 
     async def action_capture(self) -> None:
-        if cv2 is None:
-            return
-        if self._cap is None:
-            self._open_camera()
-        if not self._cap:
+        if self._capture_in_progress:
+            log.debug("Capture already in progress; ignoring re-entrant call")
             return
 
-        capturing = True
-        while capturing and self._cap:
-            camera_id = str(self.cameras[self._current])
-            log.debug("Capturing frame from camera index %s", camera_id)
-            try:
-                self.app.status = f"Capturing from camera {camera_id}"
-            except Exception:
-                pass
-            ok, frame = self._cap.read()
-            if not ok:
-                log.warning("Failed to read frame from camera %s", camera_id)
+        self._capture_in_progress = True
+        try:
+            if cv2 is None:
+                return
+            if self._cap is None:
+                self._open_camera()
+            if not self._cap:
+                return
+
+            capturing = True
+            while capturing and self._cap:
+                camera_id = str(self.cameras[self._current])
+                log.debug("Capturing frame from camera index %s", camera_id)
                 try:
-                    self.app.status = "Capture failed"
+                    self.app.status = f"Capturing from camera {camera_id}"
                 except Exception:
                     pass
-                break
+                ok, frame = self._cap.read()
+                if not ok:
+                    log.warning("Failed to read frame from camera %s", camera_id)
+                    try:
+                        self.app.status = "Capture failed"
+                    except Exception:
+                        pass
+                    break
 
-            face: BBox | None = None
-            body: BBox | None = None
-            auto_detected = False
-            if self._model is not None:
-                try:
-                    result = self._model(frame, verbose=False)[0]
-                    for x1, y1, x2, y2, _, cls_id in result.boxes.data.tolist():
-                        box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
-                        if int(cls_id) == 0 and face is None:
-                            face = box
-                        elif int(cls_id) == 1 and body is None:
-                            body = box
-                    auto_detected = face is not None and body is not None
-                except Exception:  # pragma: no cover - handled gracefully
-                    log.warning("YOLO detection failed", exc_info=True)
+                face: BBox | None = None
+                body: BBox | None = None
+                auto_detected = False
+                if self._model is not None:
+                    try:
+                        result = self._model(frame, verbose=False)[0]
+                        for x1, y1, x2, y2, _, cls_id in result.boxes.data.tolist():
+                            box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
+                            if int(cls_id) == 0 and face is None:
+                                face = box
+                            elif int(cls_id) == 1 and body is None:
+                                body = box
+                        auto_detected = face is not None and body is not None
+                    except Exception:  # pragma: no cover - handled gracefully
+                        log.warning("YOLO detection failed", exc_info=True)
 
-            if face and body:
-                preview = frame.copy()
-                cv2.rectangle(
-                    preview,
-                    (face[0], face[1]),
-                    (face[0] + face[2], face[1] + face[3]),
-                    (0, 255, 0),
-                    2,
-                )
-                cv2.rectangle(
-                    preview,
-                    (body[0], body[1]),
-                    (body[0] + body[2], body[1] + body[3]),
-                    (255, 0, 0),
-                    2,
-                )
-                cv2.imshow("Detections", preview)
-                cv2.waitKey(1)
-                use_auto = await self._confirm(
-                    "Use auto-detected bounding boxes?",
-                    confirm_label="Use auto",
-                    cancel_label="Manual ROI",
-                )
-                cv2.destroyAllWindows()
-                if not use_auto:
+                if face and body:
+                    preview = frame.copy()
+                    cv2.rectangle(
+                        preview,
+                        (face[0], face[1]),
+                        (face[0] + face[2], face[1] + face[3]),
+                        (0, 255, 0),
+                        2,
+                    )
+                    cv2.rectangle(
+                        preview,
+                        (body[0], body[1]),
+                        (body[0] + body[2], body[1] + body[3]),
+                        (255, 0, 0),
+                        2,
+                    )
+                    cv2.imshow("Detections", preview)
+                    cv2.waitKey(1)
+                    use_auto = await self._confirm(
+                        "Use auto-detected bounding boxes?",
+                        confirm_label="Use auto",
+                        cancel_label="Manual ROI",
+                    )
+                    cv2.destroyAllWindows()
+                    if not use_auto:
+                        auto_detected = False
+                        face, body = self._manual_select(frame)
+                    else:
+                        auto_detected = True
+                else:
                     auto_detected = False
                     face, body = self._manual_select(frame)
-                else:
-                    auto_detected = True
-            else:
-                auto_detected = False
-                face, body = self._manual_select(frame)
 
-            if face is None or body is None:
+                if face is None or body is None:
+                    try:
+                        self.app.status = "Capture cancelled"
+                    except Exception:
+                        pass
+                    retry = await self._confirm("Retry capture?", confirm_label="Retry")
+                    if not retry:
+                        break
+                    continue
+
+                name = await asyncio.to_thread(input, "Subject name: ")
                 try:
-                    self.app.status = "Capture cancelled"
+                    self.app.status = "Saving sample..."
                 except Exception:
                     pass
-                retry = await self._confirm("Retry capture?", confirm_label="Retry")
-                if not retry:
-                    break
-                continue
+                save_sample(
+                    frame,
+                    face,
+                    body,
+                    name,
+                    camera_id,
+                    self.dataset_path,
+                )
+                try:
+                    self.app.record_capture_event(auto_detected, datetime.now())
+                except Exception:
+                    pass
+                try:
+                    self.app.status = "Sample saved"
+                except Exception:
+                    pass
 
-            name = await asyncio.to_thread(input, "Subject name: ")
+                capturing = await self._confirm(
+                    "Capture another photo?",
+                    confirm_label="Capture",
+                    cancel_label="Done",
+                )
+
+            if self._cap:
+                self._cap.release()
+                self._cap = None
             try:
-                self.app.status = "Saving sample..."
+                self.app.status = ""
             except Exception:
                 pass
-            save_sample(
-                frame,
-                face,
-                body,
-                name,
-                camera_id,
-                self.dataset_path,
-            )
-            try:
-                self.app.record_capture_event(auto_detected, datetime.now())
-            except Exception:
-                pass
-            try:
-                self.app.status = "Sample saved"
-            except Exception:
-                pass
-
-            capturing = await self._confirm(
-                "Capture another photo?",
-                confirm_label="Capture",
-                cancel_label="Done",
-            )
-
-        if self._cap:
-            self._cap.release()
-            self._cap = None
-        try:
-            self.app.status = ""
-        except Exception:
-            pass
-        self.app.switch_screen("menu")
+            self.app.switch_screen("menu")
+        finally:
+            self._capture_in_progress = False
 
     async def _confirm(
         self,
