@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime
@@ -18,8 +19,9 @@ except Exception:  # pragma: no cover - handled gracefully
     YOLO = None  # type: ignore
 import numpy as np
 from textual.app import ComposeResult
-from textual.screen import Screen
-from textual.widgets import Static
+from textual.containers import Horizontal, Vertical
+from textual.screen import ModalScreen, Screen
+from textual.widgets import Button, Static
 
 
 log = logging.getLogger(__name__)
@@ -86,6 +88,36 @@ def save_sample(
     return image_path, label_path
 
 
+class ConfirmCaptureModal(ModalScreen[bool]):
+    """Simple confirmation modal returning ``True`` for yes choices."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        confirm_label: str = "Yes",
+        cancel_label: str = "No",
+    ) -> None:
+        super().__init__()
+        self._message = message
+        self._confirm_label = confirm_label
+        self._cancel_label = cancel_label
+
+    def compose(self) -> ComposeResult:  # type: ignore[override]
+        yield Vertical(
+            Static(self._message, id="confirm-message"),
+            Horizontal(
+                Button(self._confirm_label, id="confirm", variant="success"),
+                Button(self._cancel_label, id="cancel", variant="primary"),
+                id="confirm-buttons",
+            ),
+            id="confirm-container",
+        )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.dismiss(event.button.id == "confirm")
+
+
 class CaptureScreen(Screen):
     """Screen for capturing and labeling images."""
 
@@ -115,6 +147,7 @@ class CaptureScreen(Screen):
         self.model_path = Path(model_path) if model_path else None
         self._model: YOLO | None = None
         self._device = device
+        self._capture_in_progress = False
 
     def compose(self) -> ComposeResult:  # type: ignore[override]
         yield Static("Press 'c' to capture or 'n' to switch camera")
@@ -157,88 +190,175 @@ class CaptureScreen(Screen):
         self._open_camera()
 
     def action_menu(self) -> None:  # pragma: no cover - trivial
+        if self._cap:
+            self._cap.release()
+            self._cap = None
         self.app.switch_screen("menu")
 
     def on_show(self) -> None:  # type: ignore[override]
         if cv2 is not None and self._cap is None:
             self._open_camera()
 
-    def action_capture(self) -> None:
-        if cv2 is None or not self._cap:
-            return
-        log.debug("Capturing frame from camera index %s", self.cameras[self._current])
-        ok, frame = self._cap.read()
-        if not ok:
+    async def action_capture(self) -> None:
+        if self._capture_in_progress:
+            log.debug("Capture already in progress; ignoring re-entrant call")
             return
 
-        face: BBox | None = None
-        body: BBox | None = None
-        auto_detected = False
-        if self._model is not None:
-            try:
-                result = self._model(frame, verbose=False)[0]
-                for x1, y1, x2, y2, _, cls_id in result.boxes.data.tolist():
-                    box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
-                    if int(cls_id) == 0 and face is None:
-                        face = box
-                    elif int(cls_id) == 1 and body is None:
-                        body = box
-                auto_detected = face is not None and body is not None
-            except Exception:  # pragma: no cover - handled gracefully
-                log.warning("YOLO detection failed", exc_info=True)
+        self._capture_in_progress = True
+        try:
+            if cv2 is None:
+                return
+            if self._cap is None:
+                self._open_camera()
+            if not self._cap:
+                return
 
-        if face and body:
-            preview = frame.copy()
-            cv2.rectangle(
-                preview,
-                (face[0], face[1]),
-                (face[0] + face[2], face[1] + face[3]),
-                (0, 255, 0),
-                2,
-            )
-            cv2.rectangle(
-                preview,
-                (body[0], body[1]),
-                (body[0] + body[2], body[1] + body[3]),
-                (255, 0, 0),
-                2,
-            )
-            cv2.imshow("detections (press y to accept)", preview)
-            key = cv2.waitKey(0)
-            cv2.destroyAllWindows()
-            if key not in (ord("y"), ord("Y")):
+            capturing = True
+            while capturing and self._cap:
+                camera_id = str(self.cameras[self._current])
+                log.debug("Capturing frame from camera index %s", camera_id)
+                try:
+                    self.app.status = f"Capturing from camera {camera_id}"
+                except Exception:
+                    pass
+                ok, frame = self._cap.read()
+                if not ok:
+                    log.warning("Failed to read frame from camera %s", camera_id)
+                    try:
+                        self.app.status = "Capture failed"
+                    except Exception:
+                        pass
+                    break
+
+                face: BBox | None = None
+                body: BBox | None = None
                 auto_detected = False
-                face = cv2.selectROI("face", frame, showCrosshair=True)
-                body = cv2.selectROI("body", frame, showCrosshair=True)
-                cv2.destroyAllWindows()
-        else:
-            auto_detected = False
-            face = cv2.selectROI("face", frame, showCrosshair=True)
-            body = cv2.selectROI("body", frame, showCrosshair=True)
-            cv2.destroyAllWindows()
+                if self._model is not None:
+                    try:
+                        result = self._model(frame, verbose=False)[0]
+                        for x1, y1, x2, y2, _, cls_id in result.boxes.data.tolist():
+                            box = (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
+                            if int(cls_id) == 0 and face is None:
+                                face = box
+                            elif int(cls_id) == 1 and body is None:
+                                body = box
+                        auto_detected = face is not None and body is not None
+                    except Exception:  # pragma: no cover - handled gracefully
+                        log.warning("YOLO detection failed", exc_info=True)
 
-        name = input("Subject name: ")
-        try:
-            self.app.status = "Saving sample..."
-        except Exception:
-            pass
-        save_sample(
-            frame,
-            face,
-            body,
-            name,
-            str(self.cameras[self._current]),
-            self.dataset_path,
+                if face and body:
+                    preview = frame.copy()
+                    cv2.rectangle(
+                        preview,
+                        (face[0], face[1]),
+                        (face[0] + face[2], face[1] + face[3]),
+                        (0, 255, 0),
+                        2,
+                    )
+                    cv2.rectangle(
+                        preview,
+                        (body[0], body[1]),
+                        (body[0] + body[2], body[1] + body[3]),
+                        (255, 0, 0),
+                        2,
+                    )
+                    cv2.imshow("Detections", preview)
+                    cv2.waitKey(1)
+                    use_auto = await self._confirm(
+                        "Use auto-detected bounding boxes?",
+                        confirm_label="Use auto",
+                        cancel_label="Manual ROI",
+                    )
+                    cv2.destroyAllWindows()
+                    if not use_auto:
+                        auto_detected = False
+                        face, body = self._manual_select(frame)
+                    else:
+                        auto_detected = True
+                else:
+                    auto_detected = False
+                    face, body = self._manual_select(frame)
+
+                if face is None or body is None:
+                    try:
+                        self.app.status = "Capture cancelled"
+                    except Exception:
+                        pass
+                    retry = await self._confirm("Retry capture?", confirm_label="Retry")
+                    if not retry:
+                        break
+                    continue
+
+                name = await asyncio.to_thread(input, "Subject name: ")
+                try:
+                    self.app.status = "Saving sample..."
+                except Exception:
+                    pass
+                save_sample(
+                    frame,
+                    face,
+                    body,
+                    name,
+                    camera_id,
+                    self.dataset_path,
+                )
+                try:
+                    self.app.record_capture_event(auto_detected, datetime.now())
+                except Exception:
+                    pass
+                try:
+                    self.app.status = "Sample saved"
+                except Exception:
+                    pass
+
+                capturing = await self._confirm(
+                    "Capture another photo?",
+                    confirm_label="Capture",
+                    cancel_label="Done",
+                )
+
+            if self._cap:
+                self._cap.release()
+                self._cap = None
+            try:
+                self.app.status = ""
+            except Exception:
+                pass
+            self.app.switch_screen("menu")
+        finally:
+            self._capture_in_progress = False
+
+    async def _confirm(
+        self,
+        message: str,
+        *,
+        confirm_label: str = "Yes",
+        cancel_label: str = "No",
+    ) -> bool:
+        result = await self.app.push_screen_wait(
+            ConfirmCaptureModal(
+                message,
+                confirm_label=confirm_label,
+                cancel_label=cancel_label,
+            )
         )
-        try:
-            self.app.record_capture_event(auto_detected, datetime.now())
-        except Exception:
-            pass
-        try:
-            self.app.status = "Sample saved"
-        except Exception:
-            pass
-        if self._cap:
-            self._cap.release()
-            self._cap = None
-        self.app.switch_screen("menu")
+        return bool(result)
+
+    def _manual_select(self, frame: np.ndarray) -> tuple[BBox | None, BBox | None]:
+        if cv2 is None:
+            return None, None
+        face = self._select_box("face", frame)
+        body = self._select_box("body", frame)
+        cv2.destroyAllWindows()
+        return face, body
+
+    def _select_box(self, window: str, frame: np.ndarray) -> BBox | None:
+        if cv2 is None:
+            return None
+        box = cv2.selectROI(window, frame, showCrosshair=True)
+        if not isinstance(box, tuple) or len(box) != 4:
+            return None
+        x, y, w, h = map(int, box)
+        if w <= 0 or h <= 0:
+            return None
+        return x, y, w, h

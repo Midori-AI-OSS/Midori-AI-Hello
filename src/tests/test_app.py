@@ -137,6 +137,11 @@ def test_capture_returns_to_menu(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("midori_ai_hello.capture_screen.save_sample", lambda *a, **k: None)
     monkeypatch.setattr("builtins.input", lambda _: "alice")
 
+    async def fake_confirm(self, message: str, **kwargs: object) -> bool:
+        return kwargs.get("confirm_label") not in {"Capture"}
+
+    monkeypatch.setattr(CaptureScreen, "_confirm", fake_confirm)
+
     async def run() -> None:
         app.on_mount()
         await asyncio.sleep(0)
@@ -145,8 +150,7 @@ def test_capture_returns_to_menu(monkeypatch, tmp_path: Path) -> None:
         screen = app.screen
         assert isinstance(screen, CaptureScreen)
         screen._cap = DummyCap()
-        screen.action_capture()
-        await asyncio.sleep(0)
+        await screen.action_capture()
         assert isinstance(app.screen, MainMenuScreen)
         assert screen._cap is None
 
