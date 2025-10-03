@@ -53,6 +53,17 @@ class MidoriApp(App):
         ("q", "quit", "Quit"),
     ]
 
+    DEFAULT_CSS = """
+    .status-bar {
+        layer: footer;
+        background: $boost;
+        color: $text;
+        padding: 0 1;
+        height: 1;
+        text-style: bold;
+    }
+    """
+
     def __init__(
         self,
         config_path: str | Path,
@@ -89,6 +100,7 @@ class MidoriApp(App):
         footer.styles.dock = "bottom"
         self._status_bar = Static("", classes="status-bar")
         self._status_bar.styles.dock = "bottom"
+        self._status_bar.styles.layer = "footer"
         yield footer
         yield self._status_bar
         self.call_after_refresh(self._refresh_footer)
